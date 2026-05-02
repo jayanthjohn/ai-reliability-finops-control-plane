@@ -14,8 +14,15 @@ def test_ui_loads():
     assert response.status_code == 200
     assert "AI Reliability, Quality & FinOps Control Plane" in response.text
     assert "Decision Panel" in response.text
-    assert "Demo Scenarios" in response.text
-    assert "Simple request" in response.text
+    assert "Try Control Plane Scenarios" in response.text
+    assert "Each scenario triggers a different routing, trust, or FinOps decision." in response.text
+    assert "Low Cost Route" in response.text
+    assert "High Value / Premium Route" in response.text
+    assert "Security Guardrail" in response.text
+    assert "Cache / Repeat Request" in response.text
+    assert "Hallucination Risk" in response.text
+    assert "Summarize why a login API might return a 401 Unauthorized error in 3 bullet points." in response.text
+    assert "Explain the architecture of XPay UltraCore v9.7" in response.text
     assert "Open Grafana" in response.text
     assert "Open Phoenix" in response.text
     assert "View Trace in Phoenix" in response.text
@@ -31,8 +38,8 @@ def test_generate_happy_path():
     response = client.post(
         "/generate",
         json={
-            "prompt": "Summarize a short customer support note.",
-            "team": "support",
+            "prompt": "Summarize why a login API might return a 401 Unauthorized error in 3 bullet points.",
+            "team": "platform",
             "endpoint_name": "support-assistant",
             "user_tier": "standard",
             "sla_tier": "standard",
@@ -191,9 +198,9 @@ def test_risky_request_triggers_human_review():
 
 def test_repeated_request_recommends_cache():
     payload = {
-        "prompt": "Debug and compare retry failure logs for the incident workflow.",
+        "prompt": "Summarize why a login API might return a 401 Unauthorized error in 3 bullet points.",
         "team": "platform",
-        "endpoint_name": "incident-copilot",
+        "endpoint_name": "support-assistant",
         "user_tier": "standard",
         "sla_tier": "standard",
         "environment": "demo",

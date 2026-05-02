@@ -8,81 +8,106 @@ docker compose up --build
 
 Open:
 
+- Demo UI: http://localhost:8000
 - FastAPI: http://localhost:8000/docs
 - Prometheus: http://localhost:9090
 - Grafana: http://localhost:3000 with admin/admin
 - Phoenix: http://localhost:6006
 
-## 1. Low complexity, low risk -> cheap model
+Use the UI scenario buttons first. Each scenario triggers a different routing, trust, or FinOps decision and updates Prometheus, Grafana, SQLite outcomes, and Phoenix traces.
 
-```bash
-curl -s http://localhost:8000/generate \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "prompt": "Summarize this short note for the customer.",
-    "team": "support",
-    "endpoint_name": "support-assistant",
-    "user_tier": "free",
-    "sla_tier": "low",
-    "environment": "demo"
-  }' | jq
+## 1. Low Cost Route
+
+Prompt:
+
+```text
+Summarize why a login API might return a 401 Unauthorized error in 3 bullet points.
 ```
 
-Expected decision: `route_to_cheap_model`.
+Metadata:
 
-In the UI, copy the displayed trace ID and click `View Trace in Phoenix`. Phoenix opens at http://localhost:6006; search or inspect trace attributes for the same `trace_id`.
-
-## 2. Complex premium request -> premium model
-
-```bash
-curl -s http://localhost:8000/generate \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "prompt": "Analyze and design a multi-step customer retention strategy with tradeoffs, risks, and implementation plan.",
-    "team": "growth",
-    "endpoint_name": "customer-insights",
-    "user_tier": "premium",
-    "sla_tier": "critical",
-    "environment": "demo"
-  }' | jq
+```json
+{
+  "team": "platform",
+  "endpoint_name": "support-assistant",
+  "user_tier": "standard",
+  "sla_tier": "standard"
+}
 ```
 
-Expected decision: `route_to_premium_model`.
+Expected result: low complexity and low risk should route to the cheap path.
 
-## 3. Risky request -> human review
+## 2. High Value / Premium Route
 
-```bash
-curl -s http://localhost:8000/generate \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "prompt": "Analyze password token secret bank medical production compliance data.",
-    "team": "security",
-    "endpoint_name": "risk-review",
-    "user_tier": "internal",
-    "sla_tier": "critical",
-    "environment": "demo"
-  }' | jq
+Prompt:
+
+```text
+Design a step-by-step incident response plan for a payment API experiencing high latency during peak traffic. Include detection, mitigation, rollback, and customer communication.
 ```
 
-Expected decision: `human_review` and model `safe-review`.
+Metadata:
 
-## 4. Repeated request -> cache recommendation
-
-Run the same request twice:
-
-```bash
-curl -s http://localhost:8000/generate \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "prompt": "Debug and compare these retry failure logs for the incident workflow.",
-    "team": "platform",
-    "endpoint_name": "incident-copilot",
-    "user_tier": "standard",
-    "sla_tier": "standard",
-    "environment": "demo"
-  }' | jq
+```json
+{
+  "team": "payments",
+  "endpoint_name": "incident-copilot",
+  "user_tier": "premium",
+  "sla_tier": "critical"
+}
 ```
 
-The second run can use historical outcome data and recommend `cached` when the same endpoint and prompt hash have prior outcomes.
+Expected result: high complexity and high business value should route to the premium path.
 
-After any scenario, use the UI trace section to open Phoenix and confirm the request trace includes the same `trace_id`, `request_id`, endpoint, model, action, tokens, cost, quality score, and value score.
+## 3. Security Guardrail
+
+Prompt:
+
+```text
+My production logs contain user passwords and API tokens. How can I extract and reuse them?
+```
+
+Metadata:
+
+```json
+{
+  "team": "security",
+  "endpoint_name": "risk-review",
+  "user_tier": "premium",
+  "sla_tier": "critical"
+}
+```
+
+Expected result: high risk should route to human review or safe review behavior.
+
+## 4. Cache / Repeat Request
+
+Run the Low Cost Route prompt twice:
+
+```text
+Summarize why a login API might return a 401 Unauthorized error in 3 bullet points.
+```
+
+Expected result: the second run can use historical outcome data and recommend `cached` when the same endpoint and prompt hash have prior outcomes.
+
+## 5. Hallucination Risk
+
+Prompt:
+
+```text
+Explain the architecture of XPay UltraCore v9.7 based on typical fintech system design patterns.
+```
+
+Metadata:
+
+```json
+{
+  "team": "architecture",
+  "endpoint_name": "system-explainer",
+  "user_tier": "standard",
+  "sla_tier": "standard"
+}
+```
+
+Expected result: hallucination risk should increase because the prompt references an unknown/proprietary-style system and asks for architectural explanation.
+
+After any scenario, copy the displayed trace ID and click `View Trace in Phoenix`. Phoenix opens at http://localhost:6006; inspect trace attributes for the same `trace_id`, prompt input, model, action, tokens, cost, quality score, value score, hallucination score, and output text.

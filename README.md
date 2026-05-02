@@ -62,10 +62,11 @@ Open http://localhost:8000 after starting Docker Compose.
 
 Use the chat UI to send a prompt or choose one of the built-in demo scenarios:
 
-- Simple request
-- Complex premium request
-- Security risk request
-- Repeated request
+- Low Cost Route
+- High Value / Premium Route
+- Security Guardrail
+- Cache / Repeat Request
+- Hallucination Risk
 
 Each chat submission calls `POST /generate`, so it still runs request intelligence, decisioning, mock LLM generation, quality scoring, value scoring, SQLite outcome storage, Prometheus metrics, and Phoenix tracing. After sending a few requests, open Grafana at http://localhost:3000 to see dashboard data and Phoenix at http://localhost:6006 to inspect traces when export is available. If Phoenix export is unavailable, the app logs a tracing fallback and continues running.
 
@@ -107,8 +108,8 @@ Generate:
 curl -s http://localhost:8000/generate \
   -H 'Content-Type: application/json' \
   -d '{
-    "prompt": "Summarize this short customer support note.",
-    "team": "support",
+    "prompt": "Summarize why a login API might return a 401 Unauthorized error in 3 bullet points.",
+    "team": "platform",
     "endpoint_name": "support-assistant",
     "user_tier": "standard",
     "sla_tier": "standard",
