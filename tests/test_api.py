@@ -1,4 +1,5 @@
 from fastapi.testclient import TestClient
+from contextlib import contextmanager
 from uuid import UUID
 
 import app.main as main
@@ -51,13 +52,13 @@ def test_generate_happy_path():
     assert body["outcome_id"]
 
 
-def test_generate_trace_id_is_emitted(monkeypatch):
+def test_generate_rich_trace_payload_is_enriched(monkeypatch):
     emitted = {}
 
-    def capture_trace(attributes):
+    def capture_trace(span, attributes):
         emitted.update(attributes)
 
-    monkeypatch.setattr(main, "emit_generation_trace", capture_trace)
+    monkeypatch.setattr(main, "enrich_generation_span", capture_trace)
     response = client.post(
         "/generate",
         json={
@@ -73,13 +74,61 @@ def test_generate_trace_id_is_emitted(monkeypatch):
     assert response.status_code == 200
     assert emitted["trace_id"] == body["trace_id"]
     assert emitted["request_id"] == body["request_id"]
+    assert emitted["prompt"] == "Summarize a short support note."
+    assert emitted["response_text"] == body["llm_response"]["text"]
     assert emitted["endpoint"] == "support-assistant"
-    assert emitted["model"] == body["llm_response"]["model"]
-    assert emitted["action"] == body["decision"]["selected_action"]
+    assert emitted["endpoint_name"] == "support-assistant"
+    assert emitted["selected_model"] == body["llm_response"]["model"]
+    assert emitted["selected_action"] == body["decision"]["selected_action"]
+    assert emitted["prompt_tokens"] == body["llm_response"]["prompt_tokens"]
+    assert emitted["completion_tokens"] == body["llm_response"]["completion_tokens"]
+    assert emitted["total_tokens"] == body["llm_response"]["total_tokens"]
     assert emitted["tokens"] == body["llm_response"]["total_tokens"]
-    assert emitted["cost"] == body["llm_response"]["estimated_cost"]
+    assert emitted["estimated_cost"] == body["llm_response"]["estimated_cost"]
+    assert emitted["latency_ms"] == body["llm_response"]["latency_ms"]
+    assert emitted["complexity_score"] == body["classification"]["complexity_score"]
+    assert emitted["risk_score"] == body["classification"]["risk_score"]
+    assert emitted["business_value_score"] == body["classification"]["business_value_score"]
+    assert emitted["historical_failure_score"] == body["classification"]["historical_failure_score"]
     assert emitted["quality_score"] == body["quality"]["quality_score"]
     assert emitted["value_score"] == body["value"]["value_score"]
+    assert emitted["prompt_roi_score"] == body["value"]["prompt_roi_score"]
+    assert emitted["reason_codes"] == body["classification"]["reason_codes"]
+
+
+def test_generate_records_trace_error(monkeypatch):
+    recorded = {}
+
+    @contextmanager
+    def capture_span(attributes):
+        recorded["initial"] = attributes
+        try:
+            yield "span"
+        except Exception as exc:
+            recorded["error"] = exc
+            raise
+
+    def fail_classifier(*args, **kwargs):
+        raise RuntimeError("classifier unavailable")
+
+    monkeypatch.setattr(main, "generation_span", capture_span)
+    monkeypatch.setattr(main, "classify_request", fail_classifier)
+    error_client = TestClient(app, raise_server_exceptions=False)
+    response = error_client.post(
+        "/generate",
+        json={
+            "prompt": "Summarize a short support note.",
+            "team": "support",
+            "endpoint_name": "support-assistant",
+            "user_tier": "standard",
+            "sla_tier": "standard",
+            "environment": "demo",
+        },
+    )
+    assert response.status_code == 500
+    assert recorded["initial"]["prompt"] == "Summarize a short support note."
+    assert recorded["initial"]["endpoint_name"] == "support-assistant"
+    assert isinstance(recorded["error"], RuntimeError)
 
 
 def test_risky_request_triggers_human_review():

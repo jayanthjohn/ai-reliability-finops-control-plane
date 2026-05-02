@@ -17,7 +17,7 @@ from app.models import GenerateRequest, GenerateResponse, OutcomeRecord
 from app.outcome_store import get_summary, init_db, save_outcome
 from app.quality_score import compute_quality_score
 from app.request_classifier import classify_request, prompt_hash
-from app.tracing import emit_generation_trace, setup_tracing
+from app.tracing import enrich_generation_span, generation_span, setup_tracing
 from app.ui import INDEX_HTML
 from app.value_score import compute_value_score
 
@@ -47,68 +47,91 @@ def generate(request: GenerateRequest) -> GenerateResponse:
     request_id = str(uuid4())
     trace_id = str(uuid4())
     try:
-        classification = classify_request(request, settings.budget_state, settings.slo_state)
-        decision = decide_route(classification, settings.budget_state, settings.slo_state, request.preferred_model)
-        llm_response = generate_mock_response(request.prompt, decision.selected_model, decision.selected_action)
-        quality = compute_quality_score(request.prompt, llm_response, classification.complexity_score)
-        value = compute_value_score(request, llm_response, quality.quality_score, classification.risk_score)
-        tags = attribution_tags(request, llm_response.model)
-        outcome = OutcomeRecord(
-            request_id=request_id,
-            prompt_hash=prompt_hash(request.prompt),
-            team=request.team,
-            endpoint_name=request.endpoint_name,
-            user_tier=request.user_tier,
-            sla_tier=request.sla_tier,
-            model=llm_response.model,
-            action=decision.selected_action,
-            complexity_score=classification.complexity_score,
-            risk_score=classification.risk_score,
-            business_value_score=classification.business_value_score,
-            historical_failure_score=classification.historical_failure_score,
-            prompt_tokens=llm_response.prompt_tokens,
-            completion_tokens=llm_response.completion_tokens,
-            total_tokens=llm_response.total_tokens,
-            latency_ms=llm_response.latency_ms,
-            estimated_cost=llm_response.estimated_cost,
-            quality_score=quality.quality_score,
-            value_score=value.value_score,
-            prompt_roi_score=value.prompt_roi_score,
-            success=quality.quality_score >= 0.55 and decision.selected_action not in {"reject_or_block", "throttle"},
-            reason_codes=classification.reason_codes,
-            attribution_tags=tags,
-        )
-        outcome_id = save_outcome(outcome)
-        record_success(request, classification, decision, llm_response, quality, value)
-        emit_generation_trace(
+        with generation_span(
             {
                 "trace_id": trace_id,
                 "request_id": request_id,
                 "team": request.team,
                 "endpoint": request.endpoint_name,
-                "model": llm_response.model,
-                "action": decision.selected_action,
-                "complexity_score": classification.complexity_score,
-                "risk_score": classification.risk_score,
-                "business_value_score": classification.business_value_score,
-                "quality_score": quality.quality_score,
-                "value_score": value.value_score,
-                "prompt_roi_score": value.prompt_roi_score,
-                "tokens": llm_response.total_tokens,
-                "cost": llm_response.estimated_cost,
-                "latency": llm_response.latency_ms,
+                "endpoint_name": request.endpoint_name,
+                "prompt": request.prompt,
             }
-        )
-        return GenerateResponse(
-            request_id=request_id,
-            trace_id=trace_id,
-            classification=classification,
-            decision=decision,
-            llm_response=llm_response,
-            quality=quality,
-            value=value,
-            outcome_id=outcome_id,
-        )
+        ) as span:
+            classification = classify_request(request, settings.budget_state, settings.slo_state)
+            decision = decide_route(classification, settings.budget_state, settings.slo_state, request.preferred_model)
+            llm_response = generate_mock_response(request.prompt, decision.selected_model, decision.selected_action)
+            quality = compute_quality_score(request.prompt, llm_response, classification.complexity_score)
+            value = compute_value_score(request, llm_response, quality.quality_score, classification.risk_score)
+            tags = attribution_tags(request, llm_response.model)
+            outcome = OutcomeRecord(
+                request_id=request_id,
+                prompt_hash=prompt_hash(request.prompt),
+                team=request.team,
+                endpoint_name=request.endpoint_name,
+                user_tier=request.user_tier,
+                sla_tier=request.sla_tier,
+                model=llm_response.model,
+                action=decision.selected_action,
+                complexity_score=classification.complexity_score,
+                risk_score=classification.risk_score,
+                business_value_score=classification.business_value_score,
+                historical_failure_score=classification.historical_failure_score,
+                prompt_tokens=llm_response.prompt_tokens,
+                completion_tokens=llm_response.completion_tokens,
+                total_tokens=llm_response.total_tokens,
+                latency_ms=llm_response.latency_ms,
+                estimated_cost=llm_response.estimated_cost,
+                quality_score=quality.quality_score,
+                value_score=value.value_score,
+                prompt_roi_score=value.prompt_roi_score,
+                success=quality.quality_score >= 0.55 and decision.selected_action not in {"reject_or_block", "throttle"},
+                reason_codes=classification.reason_codes,
+                attribution_tags=tags,
+            )
+            outcome_id = save_outcome(outcome)
+            record_success(request, classification, decision, llm_response, quality, value)
+            enrich_generation_span(
+                span,
+                {
+                    "trace_id": trace_id,
+                    "request_id": request_id,
+                    "team": request.team,
+                    "endpoint": request.endpoint_name,
+                    "endpoint_name": request.endpoint_name,
+                    "prompt": request.prompt,
+                    "response_text": llm_response.text,
+                    "selected_model": llm_response.model,
+                    "selected_action": decision.selected_action,
+                    "model": llm_response.model,
+                    "action": decision.selected_action,
+                    "complexity_score": classification.complexity_score,
+                    "risk_score": classification.risk_score,
+                    "business_value_score": classification.business_value_score,
+                    "historical_failure_score": classification.historical_failure_score,
+                    "prompt_tokens": llm_response.prompt_tokens,
+                    "completion_tokens": llm_response.completion_tokens,
+                    "total_tokens": llm_response.total_tokens,
+                    "tokens": llm_response.total_tokens,
+                    "estimated_cost": llm_response.estimated_cost,
+                    "cost": llm_response.estimated_cost,
+                    "latency_ms": llm_response.latency_ms,
+                    "latency": llm_response.latency_ms,
+                    "quality_score": quality.quality_score,
+                    "value_score": value.value_score,
+                    "prompt_roi_score": value.prompt_roi_score,
+                    "reason_codes": classification.reason_codes,
+                },
+            )
+            return GenerateResponse(
+                request_id=request_id,
+                trace_id=trace_id,
+                classification=classification,
+                decision=decision,
+                llm_response=llm_response,
+                quality=quality,
+                value=value,
+                outcome_id=outcome_id,
+            )
     except Exception:
         record_error(request.team, request.endpoint_name)
         raise
