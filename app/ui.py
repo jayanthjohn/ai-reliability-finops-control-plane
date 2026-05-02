@@ -304,6 +304,7 @@ INDEX_HTML = """
     <aside>
       <section>
         <h2>Decision Panel</h2>
+        <div class="kv"><span>LLM mode</span><span id="llm-mode" class="value pill">Waiting</span></div>
         <div class="kv"><span>Selected model</span><span id="model" class="value pill">Waiting</span></div>
         <div class="kv"><span>Selected action</span><span id="action" class="value pill">Waiting</span></div>
         <div class="score"><span>Complexity</span><div class="bar"><div id="complexity-bar" class="fill"></div></div><strong id="complexity">0</strong></div>
@@ -407,7 +408,8 @@ INDEX_HTML = """
     }
 
     function renderDecision(data) {
-      document.getElementById("model").textContent = data.decision.selected_model;
+      document.getElementById("llm-mode").textContent = data.llm_mode === "ollama" ? "Ollama" : "Mock";
+      document.getElementById("model").textContent = data.llm_response.model;
       document.getElementById("action").textContent = data.decision.selected_action;
       setScore("complexity", data.classification.complexity_score);
       setScore("risk", data.classification.risk_score, true);
@@ -433,6 +435,9 @@ INDEX_HTML = """
       const qualityClass = qualityColor(data.quality.quality_score);
       const valueClass = qualityColor(data.value.value_score);
       document.getElementById("metrics").innerHTML = [
+        metricRow("LLM mode", data.llm_mode === "ollama" ? "Ollama" : "Mock"),
+        metricRow("Fallback used", data.fallback_used ? "Yes" : "No", data.fallback_used ? "warn" : "good"),
+        metricRow("Model", response.model),
         metricRow("Prompt tokens", response.prompt_tokens),
         metricRow("Completion tokens", response.completion_tokens),
         metricRow("Total tokens", response.total_tokens),

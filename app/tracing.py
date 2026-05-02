@@ -16,9 +16,13 @@ PHOENIX_ATTRIBUTE_MAP = {
     "prompt": "input.value",
     "response_text": "output.value",
     "selected_model": "llm.model_name",
+    "model": "gen_ai.response.model",
     "prompt_tokens": "llm.token_count.prompt",
     "completion_tokens": "llm.token_count.completion",
     "total_tokens": "llm.token_count.total",
+    "estimated_cost": "llm.cost.total",
+    "latency_ms": "llm.latency_ms",
+    "llm_mode": "gen_ai.system",
 }
 
 
@@ -60,8 +64,6 @@ def _set_span_attributes(span: Any, attributes: dict[str, Any]) -> None:
 def _mark_span_as_llm(span: Any) -> None:
     span.set_attribute("openinference.span.kind", "LLM")
     span.set_attribute("span.kind", "LLM")
-    span.set_attribute("llm.system", "mock")
-    span.set_attribute("gen_ai.system", "mock")
     span.set_attribute("gen_ai.operation.name", "chat")
 
 

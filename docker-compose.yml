@@ -5,7 +5,9 @@ services:
       - "8000:8000"
     environment:
       OUTCOME_DB_PATH: /data/outcomes.db
-      LLM_MODE: mock
+      LLM_MODE: ${LLM_MODE:-mock}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2:1b}
       PHOENIX_OTLP_ENDPOINT: http://phoenix:6006/v1/traces
     volumes:
       - app-data:/data
@@ -42,4 +44,3 @@ services:
 
 volumes:
   app-data:
-

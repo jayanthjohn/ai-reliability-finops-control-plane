@@ -11,7 +11,7 @@ from starlette.responses import HTMLResponse, Response
 from app.config import get_settings
 from app.cost_attribution import attribution_tags
 from app.decision_engine import decide_route
-from app.llm_client import generate_mock_response
+from app.llm_client import generate_response
 from app.metrics import record_error, record_success
 from app.models import GenerateRequest, GenerateResponse, OutcomeRecord
 from app.outcome_store import get_summary, init_db, save_outcome
@@ -55,11 +55,13 @@ def generate(request: GenerateRequest) -> GenerateResponse:
                 "endpoint": request.endpoint_name,
                 "endpoint_name": request.endpoint_name,
                 "prompt": request.prompt,
+                "llm_mode": settings.llm_mode,
+                "ollama_model": settings.ollama_model,
             }
         ) as span:
             classification = classify_request(request, settings.budget_state, settings.slo_state)
             decision = decide_route(classification, settings.budget_state, settings.slo_state, request.preferred_model)
-            llm_response = generate_mock_response(request.prompt, decision.selected_model, decision.selected_action)
+            llm_response = generate_response(request.prompt, decision.selected_model, decision.selected_action, settings)
             quality = compute_quality_score(request.prompt, llm_response, classification.complexity_score)
             value = compute_value_score(request, llm_response, quality.quality_score, classification.risk_score)
             tags = attribution_tags(request, llm_response.model)
@@ -104,6 +106,9 @@ def generate(request: GenerateRequest) -> GenerateResponse:
                     "selected_action": decision.selected_action,
                     "model": llm_response.model,
                     "action": decision.selected_action,
+                    "llm_mode": llm_response.llm_mode,
+                    "fallback_used": llm_response.fallback_used,
+                    "ollama_model": settings.ollama_model,
                     "complexity_score": classification.complexity_score,
                     "risk_score": classification.risk_score,
                     "business_value_score": classification.business_value_score,
@@ -125,6 +130,8 @@ def generate(request: GenerateRequest) -> GenerateResponse:
             return GenerateResponse(
                 request_id=request_id,
                 trace_id=trace_id,
+                llm_mode=llm_response.llm_mode,
+                fallback_used=llm_response.fallback_used,
                 classification=classification,
                 decision=decision,
                 llm_response=llm_response,

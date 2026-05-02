@@ -44,6 +44,10 @@ def test_generate_happy_path():
     assert body["request_id"]
     assert body["trace_id"]
     UUID(body["trace_id"])
+    assert body["llm_mode"] == "mock"
+    assert body["fallback_used"] is False
+    assert body["llm_response"]["llm_mode"] == "mock"
+    assert body["llm_response"]["fallback_used"] is False
     assert body["classification"]
     assert body["decision"]
     assert body["llm_response"]
@@ -80,6 +84,8 @@ def test_generate_rich_trace_payload_is_enriched(monkeypatch):
     assert emitted["endpoint_name"] == "support-assistant"
     assert emitted["selected_model"] == body["llm_response"]["model"]
     assert emitted["selected_action"] == body["decision"]["selected_action"]
+    assert emitted["llm_mode"] == body["llm_mode"]
+    assert emitted["fallback_used"] == body["fallback_used"]
     assert emitted["prompt_tokens"] == body["llm_response"]["prompt_tokens"]
     assert emitted["completion_tokens"] == body["llm_response"]["completion_tokens"]
     assert emitted["total_tokens"] == body["llm_response"]["total_tokens"]
@@ -94,6 +100,36 @@ def test_generate_rich_trace_payload_is_enriched(monkeypatch):
     assert emitted["value_score"] == body["value"]["value_score"]
     assert emitted["prompt_roi_score"] == body["value"]["prompt_roi_score"]
     assert emitted["reason_codes"] == body["classification"]["reason_codes"]
+
+
+def test_ollama_mode_falls_back_when_unavailable(monkeypatch):
+    def fail_ollama(*args, **kwargs):
+        raise RuntimeError("ollama unavailable")
+
+    monkeypatch.setenv("LLM_MODE", "ollama")
+    monkeypatch.setenv("OLLAMA_MODEL", "llama3.2:1b")
+    monkeypatch.setattr(main, "generate_ollama_response", fail_ollama, raising=False)
+    import app.llm_client as llm_client
+
+    monkeypatch.setattr(llm_client, "generate_ollama_response", fail_ollama)
+    response = client.post(
+        "/generate",
+        json={
+            "prompt": "Summarize a short support note.",
+            "team": "support",
+            "endpoint_name": "support-assistant",
+            "user_tier": "standard",
+            "sla_tier": "standard",
+            "environment": "demo",
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["llm_mode"] == "ollama"
+    assert body["fallback_used"] is True
+    assert body["llm_response"]["llm_mode"] == "ollama"
+    assert body["llm_response"]["fallback_used"] is True
+    assert body["llm_response"]["model"] == "cheap-model"
 
 
 def test_generate_records_trace_error(monkeypatch):

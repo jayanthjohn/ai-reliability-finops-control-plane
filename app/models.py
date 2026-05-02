@@ -47,6 +47,8 @@ class LlmResponse(BaseModel):
     total_tokens: int
     latency_ms: int
     estimated_cost: float
+    llm_mode: str = "mock"
+    fallback_used: bool = False
 
 
 class QualityResult(BaseModel):
@@ -63,6 +65,8 @@ class ValueResult(BaseModel):
 class GenerateResponse(BaseModel):
     request_id: str
     trace_id: str
+    llm_mode: str
+    fallback_used: bool
     classification: ClassificationResult
     decision: DecisionResult
     llm_response: LlmResponse

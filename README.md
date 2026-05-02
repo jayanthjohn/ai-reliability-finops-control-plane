@@ -71,6 +71,28 @@ Each chat submission calls `POST /generate`, so it still runs request intelligen
 
 Every generated response includes a `trace_id`. The UI displays it with a `View Trace in Phoenix` link so demo users can connect the visible request decision to the Phoenix trace attributes.
 
+## Optional Ollama Mode
+
+Mock mode is the default and works without paid keys or local model setup. To use a real offline local model from Ollama on your Mac:
+
+```bash
+brew install ollama
+ollama pull llama3.2:1b
+ollama serve
+LLM_MODE=ollama docker compose up --build
+```
+
+The app container calls Ollama on the host through `http://host.docker.internal:11434`. Override the defaults if needed:
+
+```bash
+LLM_MODE=ollama \
+OLLAMA_BASE_URL=http://host.docker.internal:11434 \
+OLLAMA_MODEL=llama3.2:1b \
+docker compose up --build
+```
+
+If Ollama is unavailable, the app falls back to mock generation and marks `fallback_used: true` in the API response, UI, and trace attributes.
+
 ## API
 
 Health:
