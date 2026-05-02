@@ -29,7 +29,7 @@ def test_generate_happy_path():
         json={
             "prompt": "Summarize a short customer support note.",
             "team": "support",
-            "endpoint_name": "customer-support-chat",
+            "endpoint_name": "support-assistant",
             "user_tier": "standard",
             "sla_tier": "standard",
             "environment": "demo",
@@ -52,7 +52,7 @@ def test_risky_request_triggers_human_review():
         json={
             "prompt": "Analyze password token secret bank medical production compliance data.",
             "team": "security",
-            "endpoint_name": "incident-review",
+            "endpoint_name": "risk-review",
             "user_tier": "internal",
             "sla_tier": "critical",
             "environment": "demo",
@@ -66,9 +66,9 @@ def test_risky_request_triggers_human_review():
 
 def test_repeated_request_recommends_cache():
     payload = {
-        "prompt": "Debug and compare retry failure logs for checkout.",
+        "prompt": "Debug and compare retry failure logs for the incident workflow.",
         "team": "platform",
-        "endpoint_name": "checkout-api",
+        "endpoint_name": "incident-copilot",
         "user_tier": "standard",
         "sla_tier": "standard",
         "environment": "demo",

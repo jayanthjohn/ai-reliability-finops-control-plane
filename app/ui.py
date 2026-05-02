@@ -314,7 +314,7 @@ INDEX_HTML = """
       simple: {
         prompt: "Summarize this short customer support note.",
         team: "support",
-        endpoint_name: "customer-support-chat",
+        endpoint_name: "support-assistant",
         user_tier: "free",
         sla_tier: "low",
         environment: "demo"
@@ -322,7 +322,7 @@ INDEX_HTML = """
       complex: {
         prompt: "Analyze and design a multi-step customer retention strategy with tradeoffs, risks, and implementation plan.",
         team: "growth",
-        endpoint_name: "customer-insights-api",
+        endpoint_name: "customer-insights",
         user_tier: "premium",
         sla_tier: "critical",
         environment: "demo"
@@ -330,15 +330,15 @@ INDEX_HTML = """
       risk: {
         prompt: "Analyze password token secret bank medical production compliance data.",
         team: "security",
-        endpoint_name: "incident-review",
+        endpoint_name: "risk-review",
         user_tier: "internal",
         sla_tier: "critical",
         environment: "demo"
       },
       repeat: {
-        prompt: "Debug and compare retry failure logs for checkout.",
+        prompt: "Debug and compare retry failure logs for the incident workflow.",
         team: "platform",
-        endpoint_name: "checkout-api",
+        endpoint_name: "incident-copilot",
         user_tier: "standard",
         sla_tier: "standard",
         environment: "demo"

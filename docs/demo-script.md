@@ -21,7 +21,7 @@ curl -s http://localhost:8000/generate \
   -d '{
     "prompt": "Summarize this short note for the customer.",
     "team": "support",
-    "endpoint_name": "customer-support-chat",
+    "endpoint_name": "support-assistant",
     "user_tier": "free",
     "sla_tier": "low",
     "environment": "demo"
@@ -38,7 +38,7 @@ curl -s http://localhost:8000/generate \
   -d '{
     "prompt": "Analyze and design a multi-step customer retention strategy with tradeoffs, risks, and implementation plan.",
     "team": "growth",
-    "endpoint_name": "customer-insights-api",
+    "endpoint_name": "customer-insights",
     "user_tier": "premium",
     "sla_tier": "critical",
     "environment": "demo"
@@ -55,7 +55,7 @@ curl -s http://localhost:8000/generate \
   -d '{
     "prompt": "Analyze password token secret bank medical production compliance data.",
     "team": "security",
-    "endpoint_name": "incident-review",
+    "endpoint_name": "risk-review",
     "user_tier": "internal",
     "sla_tier": "critical",
     "environment": "demo"
@@ -72,9 +72,9 @@ Run the same request twice:
 curl -s http://localhost:8000/generate \
   -H 'Content-Type: application/json' \
   -d '{
-    "prompt": "Debug and compare these retry failure logs for the checkout API.",
+    "prompt": "Debug and compare these retry failure logs for the incident workflow.",
     "team": "platform",
-    "endpoint_name": "checkout-api",
+    "endpoint_name": "incident-copilot",
     "user_tier": "standard",
     "sla_tier": "standard",
     "environment": "demo"
@@ -82,4 +82,3 @@ curl -s http://localhost:8000/generate \
 ```
 
 The second run can use historical outcome data and recommend `cached` when the same endpoint and prompt hash have prior outcomes.
-

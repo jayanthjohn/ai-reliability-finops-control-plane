@@ -7,7 +7,7 @@ def test_value_score_output_range():
     request = GenerateRequest(
         prompt="Summarize this",
         team="support",
-        endpoint_name="customer-support-chat",
+        endpoint_name="support-assistant",
         user_tier="premium",
         sla_tier="critical",
         environment="demo",

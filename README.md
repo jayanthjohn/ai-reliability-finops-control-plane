@@ -85,7 +85,7 @@ curl -s http://localhost:8000/generate \
   -d '{
     "prompt": "Summarize this short customer support note.",
     "team": "support",
-    "endpoint_name": "customer-support-chat",
+    "endpoint_name": "support-assistant",
     "user_tier": "standard",
     "sla_tier": "standard",
     "environment": "demo"

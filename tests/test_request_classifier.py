@@ -7,7 +7,7 @@ def _request(prompt: str, user_tier: str = "free", sla_tier: str = "low") -> Gen
     return GenerateRequest(
         prompt=prompt,
         team="platform",
-        endpoint_name="demo-chat",
+        endpoint_name="support-assistant",
         user_tier=user_tier,
         sla_tier=sla_tier,
         environment="demo",
