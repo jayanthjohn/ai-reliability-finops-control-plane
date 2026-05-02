@@ -1,108 +1,230 @@
 # AI Reliability, Quality & FinOps Control Plane
 
-Lightweight MacBook Air demo for pre-request LLM decisioning.
+MVP for decision-driven LLM usage — optimizing cost, quality, and trust *before* execution and validating outcomes *after*.
 
-## North Star
+---
 
-Given everything known about an incoming request, including complexity, user context, SLA, business value, historical quality, and current cost envelope, decide the single best action before spending on the LLM call, then learn from the outcome.
+## Why this exists
 
-## What Makes This Different
+Most LLM systems answer:
 
-The control plane does not wait until after an expensive model call to reason about quality and cost. It classifies the request first, makes a policy decision, routes to a mock model path or review path, and stores the outcome for a basic feedback loop.
+- How good was the response?
+- How much did it cost?
 
-## MacBook Air MVP Scope
+This project focuses on a more important question:
 
-Runs locally with Docker Compose:
+👉 *Was this the right decision for this request before we spent tokens?*
 
-- Demo chat UI on http://localhost:8000
-- FastAPI app on http://localhost:8000/docs
-- Prometheus on http://localhost:9090
-- Grafana on http://localhost:3000
-- Phoenix on http://localhost:6006
-- SQLite outcome store
-- Mock LLM mode by default
+---
+
+## What this does
+
+Instead of directly calling an LLM, this control plane:
+
+1. Classifies the request (complexity, risk, business value, historical signals)
+2. Decides the optimal route (cheap / premium / review / cache)
+3. Executes using an offline or mock model
+4. Scores the outcome (quality, value, hallucination risk)
+5. Provides full observability:
+   - Metrics (cost, latency, usage trends)
+   - Traces (input → decision → output → scoring)
+   - UI explainability
+
+---
+
+## Key capabilities
+
+- Pre-request decisioning (before LLM call)
+- Dynamic routing based on request characteristics
+- Offline LLM support (Ollama)
+- Post-response validation including hallucination detection
+- Trace-level explainability (Phoenix)
+- Metrics-driven visibility (Grafana)
+- Feedback-ready architecture (foundation for learning loop)
+
+---
+
+## Core idea
+
+> Don’t just use AI.  
+> **Decide how to use it before you spend — and validate it after.**
+
+---
 
 ## Architecture Summary
 
 Request flow:
 
-1. User calls `POST /generate`.
-2. `request_classifier` scores complexity, risk, business value, and historical failures before any LLM call.
-3. `decision_engine` chooses cheap, balanced, premium, cache, review, throttle, or block action.
-4. `llm_client` returns a mock model response.
-5. `quality_score` computes deterministic quality.
-6. `value_score` computes normalized value and Prompt ROI.
-7. `outcome_store` persists the result to SQLite.
-8. `metrics` exposes Prometheus metrics.
-9. `tracing` attempts Phoenix/OpenTelemetry export without blocking app startup.
+1. User sends prompt via UI or API
+2. `request_classifier` computes:
+   - complexity_score
+   - risk_score
+   - business_value_score
+   - historical_failures
+3. `decision_engine` selects action:
+   - cheap / balanced / premium
+   - cache / review / block
+4. `llm_client` executes:
+   - mock mode OR
+   - offline LLM (Ollama)
+5. Scoring layer computes:
+   - quality_score
+   - value_score
+   - prompt_roi_score
+   - hallucination_score
+6. `outcome_store` persists results
+7. `metrics` exposes Prometheus metrics
+8. `tracing` sends data to Phoenix
 
-## What Is Excluded
+---
 
-The MVP intentionally does not include Kafka, NATS, Loki, Mimir, S3, full auth, Jira, ServiceNow, or enterprise chargeback. Enterprise features are roadmap-only for now.
+## Quick Start (Run in 5 minutes)
 
-The app does not store secrets or PII in logs, metrics, traces, or SQLite. Prompts are stored only as hashes in the outcome store.
+### Prerequisites
 
-## Setup
+- Docker Desktop installed and running  
+- (Optional) Ollama for offline LLM  
+
+---
+
+### 1. Clone the repo
+
+```bash
+git clone <your-repo-link>
+cd ai-reliability-finops-control-plane
+```
+
+---
+
+### 2. Start the system (default: mock LLM)
 
 ```bash
 docker compose up --build
 ```
 
-Then open:
+---
 
-- Demo chat UI: http://localhost:8000
-- FastAPI docs: http://localhost:8000/docs
-- Prometheus: http://localhost:9090
-- Grafana: http://localhost:3000 using `admin` / `admin`
-- Phoenix: http://localhost:6006
+### 3. Open the UI
 
-## Demo UI
+- Chat UI → http://localhost:8000  
+- API Docs → http://localhost:8000/docs  
+- Grafana → http://localhost:3000 (admin / admin)  
+- Phoenix → http://localhost:6006  
 
-Open http://localhost:8000 after starting Docker Compose.
+---
 
-Use the chat UI to send a prompt or choose one of the built-in demo scenarios:
+### 4. Try control plane scenarios
 
-- Low Cost Route
-- High Value / Premium Route
-- Security Guardrail
-- Cache / Repeat Request
-- Hallucination Risk
+Use built-in UI scenarios:
 
-Each chat submission calls `POST /generate`, so it still runs request intelligence, decisioning, mock LLM generation, quality scoring, value scoring, SQLite outcome storage, Prometheus metrics, and Phoenix tracing. After sending a few requests, open Grafana at http://localhost:3000 to see dashboard data and Phoenix at http://localhost:6006 to inspect traces when export is available. If Phoenix export is unavailable, the app logs a tracing fallback and continues running.
+- Low Cost Route  
+- High Value / Premium Route  
+- Security Guardrail  
+- Cache / Repeat Request  
+- Hallucination Risk  
 
-Every generated response includes a `trace_id`. The UI displays it with a `View Trace in Phoenix` link so demo users can connect the visible request decision to the Phoenix trace attributes.
+Each scenario demonstrates:
+- request classification  
+- routing decision  
+- model execution  
+- scoring + observability  
 
-## Optional Ollama Mode
+---
 
-Mock mode is the default and works without paid keys or local model setup. To use a real offline local model from Ollama on your Mac:
+## Optional: Run with Offline LLM (Ollama)
+
+### Install and start Ollama
 
 ```bash
 brew install ollama
 ollama pull llama3.2:1b
 ollama serve
+```
+
+---
+
+### Run system with Ollama
+
+```bash
 LLM_MODE=ollama docker compose up --build
 ```
 
-The app container calls Ollama on the host through `http://host.docker.internal:11434`. Override the defaults if needed:
+---
 
-```bash
-LLM_MODE=ollama \
-OLLAMA_BASE_URL=http://host.docker.internal:11434 \
-OLLAMA_MODEL=llama3.2:1b \
-docker compose up --build
-```
+### What changes in Ollama mode?
 
-If Ollama is unavailable, the app falls back to mock generation and marks `fallback_used: true` in the API response, UI, and trace attributes.
+- Real LLM responses  
+- Higher latency (expected)  
+- Same decision, scoring, tracing, and metrics flow  
+
+---
+
+## UI Features
+
+- Chat interface with scenario-driven testing  
+- Decision Panel:
+  - model selection  
+  - routing decision  
+  - classification scores  
+- Metrics Panel:
+  - tokens, latency, cost  
+  - value score  
+  - hallucination risk  
+- Trace linking:
+  - direct mapping to Phoenix traces  
+
+---
+
+## Observability
+
+### Metrics (Grafana)
+
+- Request volume  
+- Token usage  
+- Latency  
+- Cost trends  
+- Decision actions  
+- Hallucination score  
+
+---
+
+### Tracing (Phoenix)
+
+Each request captures:
+
+- Input prompt  
+- Output response  
+- Model and routing decision  
+- Tokens and cost  
+- Quality and value scores  
+- Hallucination risk  
+
+---
+
+## Demo Walkthrough (2 minutes)
+
+1. Open UI → http://localhost:8000  
+2. Select **Low Cost Route** → observe cheap routing  
+3. Select **High Value / Premium Route** → observe routing change  
+4. Select **Hallucination Risk**  
+   - Model generates plausible response  
+   - System flags **high hallucination risk 🔴**  
+5. Open Phoenix → inspect trace  
+6. Open Grafana → observe metrics  
+
+---
 
 ## API
 
-Health:
+### Health
 
 ```bash
 curl http://localhost:8000/health
 ```
 
-Generate:
+---
+
+### Generate
 
 ```bash
 curl -s http://localhost:8000/generate \
@@ -114,20 +236,10 @@ curl -s http://localhost:8000/generate \
     "user_tier": "standard",
     "sla_tier": "standard",
     "environment": "demo"
-  }' | jq
+  }'
 ```
 
-Summary:
-
-```bash
-curl http://localhost:8000/outcomes/summary
-```
-
-Metrics:
-
-```bash
-curl http://localhost:8000/metrics
-```
+---
 
 ## Tests
 
@@ -135,21 +247,41 @@ curl http://localhost:8000/metrics
 pytest
 ```
 
+---
+
 ## Troubleshooting
 
-- If Grafana has no data, send a few `/generate` requests first and wait for a Prometheus scrape interval.
-- If Phoenix traces do not appear, the app still runs. The tracing setup uses a best-effort OTLP exporter and logs a fallback warning if unavailable.
-- If local ports are already used, change the host ports in `docker-compose.yml`.
-- If SQLite state gets noisy during demos, remove the `app-data` Docker volume.
+- No Grafana data → send a few requests first  
+- No Phoenix traces → fallback logging still works  
+- Ports in use → update docker-compose.yml  
+- Reset state → remove Docker volume  
 
-## Demo Script
+---
 
-See [docs/demo-script.md](docs/demo-script.md).
+## What is excluded (by design)
+
+This MVP does NOT include:
+
+- Kafka / NATS  
+- Full auth / RBAC  
+- Enterprise chargeback  
+- External ticketing integrations  
+
+👉 Focus is on **core decision + observability loop**
+
+---
 
 ## Roadmap
 
-Phase 2: SLO-aware Adaptive Budget Engine.
+- SLO-aware budget engine  
+- Shadow routing / model benchmarking  
+- Online LLM validation (judge model)  
+- LLM resilience & chaos testing  
 
-Phase 3: Shadow Routing and Continuous Model Benchmarking.
+---
 
-Phase 4: LLM Resilience and Chaos Testing Suite.
+## Summary
+
+This project demonstrates a simple but powerful idea:
+
+👉 AI systems should not just respond — they should **decide, act, and learn**.
