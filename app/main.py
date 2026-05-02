@@ -1,0 +1,116 @@
+"""FastAPI application for the AI control plane MVP."""
+
+from __future__ import annotations
+
+from uuid import uuid4
+
+from fastapi import FastAPI
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+from starlette.responses import Response
+
+from app.config import get_settings
+from app.cost_attribution import attribution_tags
+from app.decision_engine import decide_route
+from app.llm_client import generate_mock_response
+from app.metrics import record_error, record_success
+from app.models import GenerateRequest, GenerateResponse, OutcomeRecord
+from app.outcome_store import get_summary, init_db, save_outcome
+from app.quality_score import compute_quality_score
+from app.request_classifier import classify_request, prompt_hash
+from app.tracing import emit_generation_trace, setup_tracing
+from app.value_score import compute_value_score
+
+
+app = FastAPI(title="AI Reliability, Quality & FinOps Control Plane")
+
+
+@app.on_event("startup")
+def startup() -> None:
+    init_db()
+    setup_tracing()
+
+
+@app.get("/health")
+def health() -> dict[str, str]:
+    return {"status": "ok", "service": "ai-control-plane"}
+
+
+@app.post("/generate", response_model=GenerateResponse)
+def generate(request: GenerateRequest) -> GenerateResponse:
+    settings = get_settings()
+    request_id = str(uuid4())
+    try:
+        classification = classify_request(request, settings.budget_state, settings.slo_state)
+        decision = decide_route(classification, settings.budget_state, settings.slo_state, request.preferred_model)
+        llm_response = generate_mock_response(request.prompt, decision.selected_model, decision.selected_action)
+        quality = compute_quality_score(request.prompt, llm_response, classification.complexity_score)
+        value = compute_value_score(request, llm_response, quality.quality_score, classification.risk_score)
+        tags = attribution_tags(request, llm_response.model)
+        outcome = OutcomeRecord(
+            request_id=request_id,
+            prompt_hash=prompt_hash(request.prompt),
+            team=request.team,
+            endpoint_name=request.endpoint_name,
+            user_tier=request.user_tier,
+            sla_tier=request.sla_tier,
+            model=llm_response.model,
+            action=decision.selected_action,
+            complexity_score=classification.complexity_score,
+            risk_score=classification.risk_score,
+            business_value_score=classification.business_value_score,
+            historical_failure_score=classification.historical_failure_score,
+            prompt_tokens=llm_response.prompt_tokens,
+            completion_tokens=llm_response.completion_tokens,
+            total_tokens=llm_response.total_tokens,
+            latency_ms=llm_response.latency_ms,
+            estimated_cost=llm_response.estimated_cost,
+            quality_score=quality.quality_score,
+            value_score=value.value_score,
+            prompt_roi_score=value.prompt_roi_score,
+            success=quality.quality_score >= 0.55 and decision.selected_action not in {"reject_or_block", "throttle"},
+            reason_codes=classification.reason_codes,
+            attribution_tags=tags,
+        )
+        outcome_id = save_outcome(outcome)
+        record_success(request, classification, decision, llm_response, quality, value)
+        emit_generation_trace(
+            {
+                "request_id": request_id,
+                "team": request.team,
+                "endpoint": request.endpoint_name,
+                "model": llm_response.model,
+                "action": decision.selected_action,
+                "complexity_score": classification.complexity_score,
+                "risk_score": classification.risk_score,
+                "business_value_score": classification.business_value_score,
+                "quality_score": quality.quality_score,
+                "value_score": value.value_score,
+                "prompt_roi_score": value.prompt_roi_score,
+                "tokens": llm_response.total_tokens,
+                "cost": llm_response.estimated_cost,
+                "latency": llm_response.latency_ms,
+            }
+        )
+        return GenerateResponse(
+            request_id=request_id,
+            classification=classification,
+            decision=decision,
+            llm_response=llm_response,
+            quality=quality,
+            value=value,
+            outcome_id=outcome_id,
+        )
+    except Exception:
+        record_error(request.team, request.endpoint_name)
+        raise
+
+
+@app.get("/outcomes/summary")
+def outcomes_summary() -> dict:
+    return get_summary()
+
+
+@app.get("/metrics")
+def metrics() -> Response:
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
