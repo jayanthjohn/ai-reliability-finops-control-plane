@@ -45,6 +45,7 @@ def index() -> HTMLResponse:
 def generate(request: GenerateRequest) -> GenerateResponse:
     settings = get_settings()
     request_id = str(uuid4())
+    trace_id = str(uuid4())
     try:
         classification = classify_request(request, settings.budget_state, settings.slo_state)
         decision = decide_route(classification, settings.budget_state, settings.slo_state, request.preferred_model)
@@ -81,6 +82,7 @@ def generate(request: GenerateRequest) -> GenerateResponse:
         record_success(request, classification, decision, llm_response, quality, value)
         emit_generation_trace(
             {
+                "trace_id": trace_id,
                 "request_id": request_id,
                 "team": request.team,
                 "endpoint": request.endpoint_name,
@@ -99,6 +101,7 @@ def generate(request: GenerateRequest) -> GenerateResponse:
         )
         return GenerateResponse(
             request_id=request_id,
+            trace_id=trace_id,
             classification=classification,
             decision=decision,
             llm_response=llm_response,

@@ -69,6 +69,8 @@ Use the chat UI to send a prompt or choose one of the built-in demo scenarios:
 
 Each chat submission calls `POST /generate`, so it still runs request intelligence, decisioning, mock LLM generation, quality scoring, value scoring, SQLite outcome storage, Prometheus metrics, and Phoenix tracing. After sending a few requests, open Grafana at http://localhost:3000 to see dashboard data and Phoenix at http://localhost:6006 to inspect traces when export is available. If Phoenix export is unavailable, the app logs a tracing fallback and continues running.
 
+Every generated response includes a `trace_id`. The UI displays it with a `View Trace in Phoenix` link so demo users can connect the visible request decision to the Phoenix trace attributes.
+
 ## API
 
 Health:

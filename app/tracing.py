@@ -33,11 +33,12 @@ def setup_tracing() -> None:
 
 def emit_generation_trace(attributes: dict[str, Any]) -> None:
     """Emit trace attributes without storing prompt text or PII."""
+    safe_attributes = {k: v for k, v in attributes.items() if k != "prompt"}
     if _tracer is None:
-        logger.info("trace_fallback %s", {k: v for k, v in attributes.items() if k != "prompt"})
+        logger.info("trace_fallback %s", safe_attributes)
         return
-    with _tracer.start_as_current_span("llm.generate") as span:
-        for key, value in attributes.items():
+    span_name = f"llm.generate.{safe_attributes.get('trace_id', 'unlinked')}"
+    with _tracer.start_as_current_span(span_name) as span:
+        for key, value in safe_attributes.items():
             if isinstance(value, (str, int, float, bool)):
                 span.set_attribute(key, value)
-

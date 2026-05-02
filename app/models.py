@@ -62,6 +62,7 @@ class ValueResult(BaseModel):
 
 class GenerateResponse(BaseModel):
     request_id: str
+    trace_id: str
     classification: ClassificationResult
     decision: DecisionResult
     llm_response: LlmResponse
@@ -94,4 +95,3 @@ class OutcomeRecord(BaseModel):
     success: bool
     reason_codes: list[str]
     attribution_tags: dict[str, Any]
-

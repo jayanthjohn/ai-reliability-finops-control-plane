@@ -30,6 +30,8 @@ curl -s http://localhost:8000/generate \
 
 Expected decision: `route_to_cheap_model`.
 
+In the UI, copy the displayed trace ID and click `View Trace in Phoenix`. Phoenix opens at http://localhost:6006; search or inspect trace attributes for the same `trace_id`.
+
 ## 2. Complex premium request -> premium model
 
 ```bash
@@ -82,3 +84,5 @@ curl -s http://localhost:8000/generate \
 ```
 
 The second run can use historical outcome data and recommend `cached` when the same endpoint and prompt hash have prior outcomes.
+
+After any scenario, use the UI trace section to open Phoenix and confirm the request trace includes the same `trace_id`, `request_id`, endpoint, model, action, tokens, cost, quality score, and value score.

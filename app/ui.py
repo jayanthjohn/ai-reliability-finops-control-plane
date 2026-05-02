@@ -237,6 +237,25 @@ INDEX_HTML = """
       line-height: 1.45;
       font-size: 14px;
     }
+    .trace-id {
+      display: block;
+      margin: 8px 0 10px;
+      color: var(--text);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
+    .trace-link {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid var(--accent);
+      border-radius: 7px;
+      color: var(--accent);
+      font-size: 14px;
+      font-weight: 750;
+      padding: 8px 10px;
+      text-decoration: none;
+    }
     .empty {
       color: var(--muted);
       font-size: 14px;
@@ -297,6 +316,13 @@ INDEX_HTML = """
       <section>
         <h2>Metrics Panel</h2>
         <div id="metrics" class="empty">Metrics appear after the first response.</div>
+      </section>
+
+      <section>
+        <h2>Phoenix Trace</h2>
+        <div class="empty">Trace ID</div>
+        <span id="trace-id" class="trace-id">Waiting</span>
+        <a id="trace-link" class="trace-link" href="http://localhost:6006" target="_blank" rel="noreferrer">View Trace in Phoenix</a>
       </section>
 
       <section>
@@ -418,6 +444,11 @@ INDEX_HTML = """
       ].join("");
     }
 
+    function renderTrace(data) {
+      document.getElementById("trace-id").textContent = data.trace_id;
+      document.getElementById("trace-link").href = "http://localhost:6006";
+    }
+
     function renderWhy(data) {
       const c = data.classification;
       const d = data.decision;
@@ -450,6 +481,7 @@ INDEX_HTML = """
       pending.textContent = data.llm_response.text;
       renderDecision(data);
       renderMetrics(data);
+      renderTrace(data);
       renderWhy(data);
     }
 
