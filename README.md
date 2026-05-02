@@ -14,6 +14,7 @@ The control plane does not wait until after an expensive model call to reason ab
 
 Runs locally with Docker Compose:
 
+- Demo chat UI on http://localhost:8000
 - FastAPI app on http://localhost:8000/docs
 - Prometheus on http://localhost:9090
 - Grafana on http://localhost:3000
@@ -49,10 +50,24 @@ docker compose up --build
 
 Then open:
 
+- Demo chat UI: http://localhost:8000
 - FastAPI docs: http://localhost:8000/docs
 - Prometheus: http://localhost:9090
 - Grafana: http://localhost:3000 using `admin` / `admin`
 - Phoenix: http://localhost:6006
+
+## Demo UI
+
+Open http://localhost:8000 after starting Docker Compose.
+
+Use the chat UI to send a prompt or choose one of the built-in demo scenarios:
+
+- Simple request
+- Complex premium request
+- Security risk request
+- Repeated request
+
+Each chat submission calls `POST /generate`, so it still runs request intelligence, decisioning, mock LLM generation, quality scoring, value scoring, SQLite outcome storage, Prometheus metrics, and Phoenix tracing. After sending a few requests, open Grafana at http://localhost:3000 to see dashboard data and Phoenix at http://localhost:6006 to inspect traces when export is available. If Phoenix export is unavailable, the app logs a tracing fallback and continues running.
 
 ## API
 

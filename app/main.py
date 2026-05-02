@@ -6,7 +6,7 @@ from uuid import uuid4
 
 from fastapi import FastAPI
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
-from starlette.responses import Response
+from starlette.responses import HTMLResponse, Response
 
 from app.config import get_settings
 from app.cost_attribution import attribution_tags
@@ -18,6 +18,7 @@ from app.outcome_store import get_summary, init_db, save_outcome
 from app.quality_score import compute_quality_score
 from app.request_classifier import classify_request, prompt_hash
 from app.tracing import emit_generation_trace, setup_tracing
+from app.ui import INDEX_HTML
 from app.value_score import compute_value_score
 
 
@@ -33,6 +34,11 @@ def startup() -> None:
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok", "service": "ai-control-plane"}
+
+
+@app.get("/", response_class=HTMLResponse)
+def index() -> HTMLResponse:
+    return HTMLResponse(INDEX_HTML)
 
 
 @app.post("/generate", response_model=GenerateResponse)
@@ -113,4 +119,3 @@ def outcomes_summary() -> dict:
 @app.get("/metrics")
 def metrics() -> Response:
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
-

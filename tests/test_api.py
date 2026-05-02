@@ -6,6 +6,17 @@ from app.main import app
 client = TestClient(app)
 
 
+def test_ui_loads():
+    response = client.get("/")
+    assert response.status_code == 200
+    assert "AI Reliability, Quality & FinOps Control Plane" in response.text
+    assert "Decision Panel" in response.text
+    assert "Demo Scenarios" in response.text
+    assert "Simple request" in response.text
+    assert "Open Grafana" in response.text
+    assert "Open Phoenix" in response.text
+
+
 def test_health():
     response = client.get("/health")
     assert response.status_code == 200
