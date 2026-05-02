@@ -445,7 +445,8 @@ INDEX_HTML = """
         metricRow("Estimated cost", `$${Number(response.estimated_cost).toFixed(6)}`),
         metricRow("Quality score", data.quality.quality_score, qualityClass),
         metricRow("Value score", data.value.value_score, valueClass),
-        metricRow("Prompt ROI", data.value.prompt_roi_score)
+        metricRow("Prompt ROI", data.value.prompt_roi_score),
+        metricRow("Hallucination risk", `${data.hallucination.risk_label} (${data.hallucination.hallucination_score})`, data.hallucination.risk_label === "HIGH" ? "bad" : data.hallucination.risk_label === "MEDIUM" ? "warn" : "good")
       ].join("");
     }
 

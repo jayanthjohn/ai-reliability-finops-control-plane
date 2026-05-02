@@ -53,6 +53,8 @@ def test_generate_happy_path():
     assert body["llm_response"]
     assert body["quality"]
     assert body["value"]
+    assert body["hallucination"]
+    assert body["hallucination"]["risk_label"] in {"LOW", "MEDIUM", "HIGH"}
     assert body["outcome_id"]
 
 
@@ -99,6 +101,8 @@ def test_generate_rich_trace_payload_is_enriched(monkeypatch):
     assert emitted["quality_score"] == body["quality"]["quality_score"]
     assert emitted["value_score"] == body["value"]["value_score"]
     assert emitted["prompt_roi_score"] == body["value"]["prompt_roi_score"]
+    assert emitted["hallucination_score"] == body["hallucination"]["hallucination_score"]
+    assert emitted["hallucination_risk_label"] == body["hallucination"]["risk_label"]
     assert emitted["reason_codes"] == body["classification"]["reason_codes"]
 
 

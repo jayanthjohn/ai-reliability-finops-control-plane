@@ -11,6 +11,7 @@ from starlette.responses import HTMLResponse, Response
 from app.config import get_settings
 from app.cost_attribution import attribution_tags
 from app.decision_engine import decide_route
+from app.hallucination_score import compute_hallucination_score
 from app.llm_client import generate_response
 from app.metrics import record_error, record_success
 from app.models import GenerateRequest, GenerateResponse, OutcomeRecord
@@ -64,6 +65,12 @@ def generate(request: GenerateRequest) -> GenerateResponse:
             llm_response = generate_response(request.prompt, decision.selected_model, decision.selected_action, settings)
             quality = compute_quality_score(request.prompt, llm_response, classification.complexity_score)
             value = compute_value_score(request, llm_response, quality.quality_score, classification.risk_score)
+            hallucination = compute_hallucination_score(
+                request.prompt,
+                llm_response.text,
+                llm_response.model,
+                classification.complexity_score,
+            )
             tags = attribution_tags(request, llm_response.model)
             outcome = OutcomeRecord(
                 request_id=request_id,
@@ -124,6 +131,8 @@ def generate(request: GenerateRequest) -> GenerateResponse:
                     "quality_score": quality.quality_score,
                     "value_score": value.value_score,
                     "prompt_roi_score": value.prompt_roi_score,
+                    "hallucination_score": hallucination["hallucination_score"],
+                    "hallucination_risk_label": hallucination["risk_label"],
                     "reason_codes": classification.reason_codes,
                 },
             )
@@ -137,6 +146,7 @@ def generate(request: GenerateRequest) -> GenerateResponse:
                 llm_response=llm_response,
                 quality=quality,
                 value=value,
+                hallucination=hallucination,
                 outcome_id=outcome_id,
             )
     except Exception:

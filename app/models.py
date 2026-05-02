@@ -62,6 +62,11 @@ class ValueResult(BaseModel):
     business_value_weight: float
 
 
+class HallucinationResult(BaseModel):
+    hallucination_score: float
+    risk_label: Literal["LOW", "MEDIUM", "HIGH"]
+
+
 class GenerateResponse(BaseModel):
     request_id: str
     trace_id: str
@@ -72,6 +77,7 @@ class GenerateResponse(BaseModel):
     llm_response: LlmResponse
     quality: QualityResult
     value: ValueResult
+    hallucination: HallucinationResult
     outcome_id: str
 
 
